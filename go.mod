@@ -1,4 +1,4 @@
-module github.com/finalist736/finalistx-tg-bot
+module bot
 
 go 1.20
 

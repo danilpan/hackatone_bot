@@ -1,11 +1,11 @@
 package main
 
 import (
+	finbot "bot"
+	"bot/model"
 	"context"
 	"database/sql"
 	"fmt"
-	finbot "github.com/finalist736/finalistx-tg-bot"
-	"github.com/finalist736/finalistx-tg-bot/model"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/jmoiron/sqlx"
 	"strings"
