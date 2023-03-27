@@ -212,7 +212,7 @@ func main() {
 							})
 							if errAUGA != nil {
 								msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Ошибка получения гостевого списка: %s", errAUGA.Error()))
-								msg.ReplyMarkup = mainMenu
+								msg.ReplyMarkup = courseMenu
 								bot.Send(msg)
 							}
 						}
@@ -321,7 +321,7 @@ func AddUserGuestAccess(db sqlx.DB, wl *model.WhiteList) error {
 		wl.ExpiresAt = time.Now().AddDate(0, 0, 0).Add(time.Hour * 1).String()
 	}
 	_, err := db.Exec(
-		"INSERT INTO white_list (plate_number, expires_at, building_id, user_id, is_guest, is_tg_guest) VALUES($1, $2, $3, $4, $5)",
+		"INSERT INTO white_list (plate_number, expires_at, building_id, user_id, is_guest, is_tg_guest) VALUES($1, $2, $3, $4, $5, $6)",
 		strings.ToUpper(wl.PlateNumber), wl.ExpiresAt, wl.BuildingID, wl.UserID, true, true)
 	if err != nil {
 		return err
