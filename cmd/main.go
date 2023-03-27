@@ -92,7 +92,7 @@ func main() {
 					courseSignMap[update.Message.From.ID] = new(finbot.CourseSign)
 					courseSignMap[update.Message.From.ID].State = finbot.StateRegistered
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите функцию")
-					msg.ReplyMarkup = courseMenu
+					msg.ReplyMarkup = mainMenu
 					bot.Send(msg)
 				}
 
