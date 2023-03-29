@@ -131,7 +131,46 @@ func main() {
 						update.Message.Chat.ID,
 						"Выберите доступный объект")
 					msgConfig.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
-					bot.Send(msgConfig)
+					bot.Send(msgConfig)userId, errCUD := CheckUserDb(*db, update.Message.Chat.ID)
+					if errCUD != nil {
+						msgConfig := tgbotapi.NewMessage(
+							update.Message.Chat.ID,
+							"Пользователь не найден.")
+						bot.Send(msgConfig)
+						msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Пользователь не найден.")
+						msg.ReplyMarkup = courseMenu
+						bot.Send(msg)
+						continue
+					}
+					buildings, errGUB := GetUserBuildings(*db, userId)
+					if errGUB != nil {
+						msgConfig := tgbotapi.NewMessage(
+							update.Message.Chat.ID,
+							"Нет дотсупных объектов.")
+						bot.Send(msgConfig)
+						msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Нет доступных объектов.")
+						msg.ReplyMarkup = courseMenu
+						bot.Send(msg)
+						continue
+					}
+					if len(buildings) < 1 {
+						msgConfig := tgbotapi.NewMessage(
+							update.Message.Chat.ID,
+							"Нет дотсупных объектов.")
+						bot.Send(msgConfig)
+						msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Нет доступных объектов.")
+						msg.ReplyMarkup = courseMenu
+						bot.Send(msg)
+						continue
+					}
+					var buildingMenu = tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow())
+					for _, b := range buildings {
+						var but = tgbotapi.NewKeyboardButton(fmt.Sprintf("%v", b))
+						buildingMenu.Keyboard = append(buildingMenu.Keyboard, tgbotapi.NewKeyboardButtonRow(but))
+					}
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите j,]trn")
+					msg.ReplyMarkup = buildingMenu
+					bot.Send(msg)
 
 				} else {
 					cs, ok := courseSignMap[update.Message.From.ID]
@@ -176,9 +215,9 @@ func main() {
 								"Пользователь зарегистрирован.")
 							msgConfig.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 							bot.Send(msgConfig)
-							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите команду")
-							msg.ReplyMarkup = courseMenu
-							bot.Send(msg)
+							msg2 := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите команду")
+							msg2.ReplyMarkup = courseMenu
+							bot.Send(msg2)
 						} else if cs.State == finbot.StateRegistered {
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите команду")
 							msg.ReplyMarkup = courseMenu
