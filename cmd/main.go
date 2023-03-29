@@ -131,7 +131,8 @@ func main() {
 						update.Message.Chat.ID,
 						"Выберите доступный объект")
 					msgConfig.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
-					bot.Send(msgConfig)userId, errCUD := CheckUserDb(*db, update.Message.Chat.ID)
+					bot.Send(msgConfig)
+					userId, errCUD := CheckUserDb(*db, update.Message.Chat.ID)
 					if errCUD != nil {
 						msgConfig := tgbotapi.NewMessage(
 							update.Message.Chat.ID,
