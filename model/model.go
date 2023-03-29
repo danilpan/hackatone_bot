@@ -13,3 +13,8 @@ type WhiteList struct {
 	IsTgGuest   bool   `json:"is_tg_guest" db:"is_tg_guest"`
 	TotalRows   int    `json:"-" db:"total_rows"`
 }
+
+type Building struct {
+	Id   int    `json:"id" db:"building_id"`
+	Name string `json:"name" db:"name"`
+}

@@ -121,7 +121,7 @@ func main() {
 				} else if update.Message.Text == courseMenu.Keyboard[0][0].Text {
 
 					courseSignMap[update.Message.From.ID] = new(finbot.CourseSign)
-					courseSignMap[update.Message.From.ID].State = finbot.StateGuestAdd
+					courseSignMap[update.Message.From.ID].State = finbot.StateBuilding
 
 					fmt.Printf(
 						"message: %s\n",
@@ -129,7 +129,7 @@ func main() {
 
 					msgConfig := tgbotapi.NewMessage(
 						update.Message.Chat.ID,
-						"Введите номет автомобиля в формате 001AAA01")
+						"Выберите доступный объект")
 					msgConfig.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 					bot.Send(msgConfig)
 
@@ -179,6 +179,47 @@ func main() {
 						} else if cs.State == finbot.StateRegistered {
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите команду")
 							msg.ReplyMarkup = courseMenu
+							bot.Send(msg)
+						} else if cs.State == finbot.StateBuilding {
+							userId, errCUD := CheckUserDb(*db, update.Message.Chat.ID)
+							if errCUD != nil {
+								msgConfig := tgbotapi.NewMessage(
+									update.Message.Chat.ID,
+									"Пользователь не найден.")
+								bot.Send(msgConfig)
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Пользователь не найден.")
+								msg.ReplyMarkup = courseMenu
+								bot.Send(msg)
+								continue
+							}
+							buildings, errGUB := GetUserBuildings(*db, userId)
+							if errGUB != nil {
+								msgConfig := tgbotapi.NewMessage(
+									update.Message.Chat.ID,
+									"Нет дотсупных объектов.")
+								bot.Send(msgConfig)
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Нет доступных объектов.")
+								msg.ReplyMarkup = courseMenu
+								bot.Send(msg)
+								continue
+							}
+							if len(buildings) < 1 {
+								msgConfig := tgbotapi.NewMessage(
+									update.Message.Chat.ID,
+									"Нет дотсупных объектов.")
+								bot.Send(msgConfig)
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Нет доступных объектов.")
+								msg.ReplyMarkup = courseMenu
+								bot.Send(msg)
+								continue
+							}
+							var buildingMenu = tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow())
+							for _, b := range buildings {
+								var but = tgbotapi.NewKeyboardButton(fmt.Sprintf("%v", b))
+								buildingMenu.Keyboard = append(buildingMenu.Keyboard, tgbotapi.NewKeyboardButtonRow(but))
+							}
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите j,]trn")
+							msg.ReplyMarkup = buildingMenu
 							bot.Send(msg)
 						} else if cs.State == finbot.StateGuestAdd {
 
@@ -328,4 +369,21 @@ func AddUserGuestAccess(db sqlx.DB, wl *model.WhiteList) error {
 	}
 
 	return nil
+}
+
+func GetUserBuildings(db sqlx.DB, id int) ([]model.Building, error) {
+	var buildings []model.Building
+	query := `select distinct building_id, b.name
+from parking p
+         join (select id, name from buildings) b on p.building_id = b.id
+where is_active = true
+  and user_id = $1`
+	err := db.Select(&buildings, query, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return buildings, fmt.Errorf("unf")
+		}
+		return buildings, fmt.Errorf("dbe")
+	}
+	return buildings, nil
 }

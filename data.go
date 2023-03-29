@@ -5,6 +5,7 @@ type SignState int
 const (
 	StateTel SignState = iota
 	StateRegistered
+	StateBuilding
 	StateGuestAdd
 )
 
