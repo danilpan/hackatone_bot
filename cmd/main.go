@@ -176,6 +176,9 @@ func main() {
 								"Пользователь зарегистрирован.")
 							msgConfig.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 							bot.Send(msgConfig)
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите команду")
+							msg.ReplyMarkup = courseMenu
+							bot.Send(msg)
 						} else if cs.State == finbot.StateRegistered {
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите команду")
 							msg.ReplyMarkup = courseMenu
