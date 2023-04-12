@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/jmoiron/sqlx"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -73,7 +74,7 @@ func main() {
 		update = <-updChannel
 
 		if update.Message != nil {
-
+			//Если команда, пока обрабатываем только команду /start
 			if update.Message.IsCommand() {
 				cmdText := update.Message.Command()
 				if cmdText == "start" {
@@ -83,35 +84,29 @@ func main() {
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Для использования бота зарегистрируйтесь. \nПривяжите номер телефона")
 							msg.ReplyMarkup = mainMenu
 							bot.Send(msg)
+							continue
 						} else if errCUD.Error() == "dbe" {
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Для использования бота зарегистрируйтесь. \nПривяжите номер телефона")
 							msg.ReplyMarkup = mainMenu
 							bot.Send(msg)
+							continue
 						}
 					}
-					courseSignMap[update.Message.From.ID] = new(finbot.CourseSign)
-					courseSignMap[update.Message.From.ID].State = finbot.StateRegistered
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите функцию")
-					msg.ReplyMarkup = mainMenu
+					msg.ReplyMarkup = courseMenu
 					bot.Send(msg)
 				}
-
 			} else {
-
 				if update.Message.Text == mainMenu.Keyboard[0][0].Text {
+					//Если пользователь нажимает главное меню, возвращаем главное меню
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Главное меню")
 					msg.ReplyMarkup = mainMenu
 					bot.Send(msg)
 
 				} else if update.Message.Text == mainMenu.Keyboard[0][1].Text {
-
+					//Если пользователь нажимает привязать телефон , переводим в стейт ожидания номера телефона и отправляем сообщение
 					courseSignMap[update.Message.From.ID] = new(finbot.CourseSign)
 					courseSignMap[update.Message.From.ID].State = finbot.StateTel
-
-					fmt.Printf(
-						"message: %s\n",
-						update.Message.Text)
-
 					msgConfig := tgbotapi.NewMessage(
 						update.Message.Chat.ID,
 						"Введите номет телфона в формате +77771234567:")
@@ -120,18 +115,15 @@ func main() {
 
 				} else if update.Message.Text == courseMenu.Keyboard[0][0].Text {
 
-					courseSignMap[update.Message.From.ID] = new(finbot.CourseSign)
-					courseSignMap[update.Message.From.ID].State = finbot.StateBuilding
-
 					fmt.Printf(
 						"message: %s\n",
 						update.Message.Text)
 
-					msgConfig := tgbotapi.NewMessage(
-						update.Message.Chat.ID,
-						"Выберите доступный объект")
-					msgConfig.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
-					bot.Send(msgConfig)
+					//msgConfig := tgbotapi.NewMessage(
+					//	update.Message.Chat.ID,
+					//	"Выберите доступный объект")
+					//msgConfig.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+					//bot.Send(msgConfig)
 					userId, errCUD := CheckUserDb(*db, update.Message.Chat.ID)
 					if errCUD != nil {
 						msgConfig := tgbotapi.NewMessage(
@@ -164,19 +156,33 @@ func main() {
 						bot.Send(msg)
 						continue
 					}
-					var buildingMenu = tgbotapi.NewReplyKeyboard(tgbotapi.NewKeyboardButtonRow())
-					for _, b := range buildings {
-						var but = tgbotapi.NewKeyboardButton(fmt.Sprintf("%v", b))
-						buildingMenu.Keyboard = append(buildingMenu.Keyboard, tgbotapi.NewKeyboardButtonRow(but))
-					}
-					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите j,]trn")
-					msg.ReplyMarkup = buildingMenu
-					bot.Send(msg)
 
+					var buildingsButtons []tgbotapi.InlineKeyboardButton
+					for _, b := range buildings {
+						callback := fmt.Sprintf("building_%v", b.Id)
+						buildingsButtons = append(buildingsButtons, tgbotapi.InlineKeyboardButton{
+							Text:                         b.Name,
+							URL:                          nil,
+							CallbackData:                 &callback,
+							SwitchInlineQuery:            nil,
+							SwitchInlineQueryCurrentChat: nil,
+							CallbackGame:                 nil,
+							Pay:                          false,
+						})
+					}
+					courseSignMap[update.Message.From.ID] = new(finbot.CourseSign)
+					courseSignMap[update.Message.From.ID].State = finbot.StateTel
+					buildingMenu := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(buildingsButtons...))
+					msg4 := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите объект.")
+					msg4.ReplyMarkup = buildingMenu
+					if _, errS := bot.Send(msg4); errS != nil {
+						fmt.Printf(errS.Error())
+					}
 				} else {
 					cs, ok := courseSignMap[update.Message.From.ID]
 					if ok {
 						if cs.State == finbot.StateTel {
+							//Проверяем мапу, если ожидается номер телефона проверяем сообщение
 							errCN := CheckNum(update.Message.Text)
 							if errCN != nil {
 								msgConfig := tgbotapi.NewMessage(
@@ -210,6 +216,8 @@ func main() {
 								bot.Send(msg)
 								continue
 							}
+							//Меняем стейт на зарегистрирован и добавляем в базу
+							UpdateUserState(*db, update.Message.Chat.ID, 1)
 							cs.State = finbot.StateRegistered
 							msgConfig := tgbotapi.NewMessage(
 								update.Message.Chat.ID,
@@ -261,7 +269,7 @@ func main() {
 								var but = tgbotapi.NewKeyboardButton(fmt.Sprintf("%v", b))
 								buildingMenu.Keyboard = append(buildingMenu.Keyboard, tgbotapi.NewKeyboardButtonRow(but))
 							}
-							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите j,]trn")
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите объект ")
 							msg.ReplyMarkup = buildingMenu
 							bot.Send(msg)
 						} else if cs.State == finbot.StateGuestAdd {
@@ -272,33 +280,50 @@ func main() {
 									msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Для использования бота зарегистрируйтесь. \nПривяжите номер телефона")
 									msg.ReplyMarkup = mainMenu
 									bot.Send(msg)
+									continue
 								} else if errCUD.Error() == "dbe" {
 									msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Для использования бота зарегистрируйтесь. \nПривяжите номер телефона")
 									msg.ReplyMarkup = mainMenu
 									bot.Send(msg)
+									continue
 								}
 							}
 							userAccList, errGAUGAL := GetActiveUserGuestAccessList(*db, id)
 							if errGAUGAL != nil {
 								msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Ошибка получения гостевого списка: %s", errGAUGAL.Error()))
-								msg.ReplyMarkup = mainMenu
+								msg.ReplyMarkup = courseMenu
+								cs.State = finbot.StateBuilding
 								bot.Send(msg)
+								continue
 							}
 							if len(*userAccList) > 0 {
 								msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Превышен лимит гостевых доступов")
-								msg.ReplyMarkup = mainMenu
+								msg.ReplyMarkup = courseMenu
+								cs.State = finbot.StateBuilding
 								bot.Send(msg)
+								continue
 							}
 							errAUGA := AddUserGuestAccess(*db, &model.WhiteList{
 								PlateNumber: update.Message.Text,
-								BuildingID:  0,
-								UserID:      int(update.Message.Chat.ID),
+								BuildingID:  cs.Building,
+								UserID:      int(id),
 							})
 							if errAUGA != nil {
-								msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Ошибка получения гостевого списка: %s", errAUGA.Error()))
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Ошибка добавления в гостевой список: %s", errAUGA.Error()))
 								msg.ReplyMarkup = courseMenu
+								cs.State = finbot.StateBuilding
 								bot.Send(msg)
+								continue
 							}
+							cs.State = finbot.StateBuilding
+							msg4 := tgbotapi.NewMessage(int64(update.Message.Chat.ID), "Номер добавлен")
+							msg4.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+							if _, errS := bot.Send(msg4); errS != nil {
+								fmt.Printf(errS.Error())
+							}
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите команду")
+							msg.ReplyMarkup = courseMenu
+							bot.Send(msg)
 						}
 
 					}
@@ -306,7 +331,38 @@ func main() {
 
 				}
 			}
-		} else {
+		} else if update.CallbackQuery != nil {
+			if update.CallbackQuery.Data != "" {
+				arr := strings.Split(update.CallbackQuery.Data, "_")
+				if len(arr) != 2 {
+					msg4 := tgbotapi.NewMessage(int64(update.CallbackQuery.From.ID), "Выберите объект.")
+					msg4.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+					if _, errS := bot.Send(msg4); errS != nil {
+						fmt.Printf(errS.Error())
+					}
+				}
+				if arr[0] == "building" {
+					if arr[1] != "" {
+						cs, ok := courseSignMap[update.CallbackQuery.From.ID]
+						if ok {
+							intVar, errAtoi := strconv.Atoi(arr[1])
+							if errAtoi != nil {
+								fmt.Printf("Error atoi")
+							}
+							cs.Building = intVar
+							msg := tgbotapi.NewMessage(int64(update.CallbackQuery.From.ID), fmt.Sprintf("Введите гос номер гостя: "))
+							msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+							cs.State = finbot.StateGuestAdd
+							bot.Send(msg)
+
+							continue
+						}
+					}
+				}
+			} else {
+				continue
+			}
+		} else { //Если не сообщение и не колбэкквери
 			fmt.Printf("not message: %+v\n", update)
 		}
 	}
@@ -359,8 +415,8 @@ func AddTgIdToUser(db sqlx.DB, id int64, phone string) error {
 	return nil
 }
 
-func CheckUserDb(db sqlx.DB, id int64) (int, error) {
-	var userId int
+func CheckUserDb(db sqlx.DB, id int64) (int64, error) {
+	var userId int64
 	query := `SELECT id FROM users WHERE tg_id=$1`
 	err := db.Get(&userId, query, id)
 	if err != nil {
@@ -372,7 +428,36 @@ func CheckUserDb(db sqlx.DB, id int64) (int, error) {
 	return userId, nil
 }
 
-func GetActiveUserGuestAccessList(db sqlx.DB, userID int) (*[]model.WhiteList, error) {
+func CheckUserState(db sqlx.DB, id int64) (int64, error) {
+	var userId int64
+	query := `SELECT tg_state FROM users WHERE tg_id=$1`
+	err := db.Get(&userId, query, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return userId, fmt.Errorf("unf")
+		}
+		return userId, fmt.Errorf("dbe")
+	}
+	return userId, nil
+}
+
+func UpdateUserState(db sqlx.DB, id, state int64) error {
+	query := `update users SET tg_state=$1 WHERE tg_id=$2`
+	res, err := db.Exec(query, state, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("unf")
+		}
+		return fmt.Errorf("dbe")
+	}
+	a, _ := res.RowsAffected()
+	if a == 0 {
+		return fmt.Errorf("dbe")
+	}
+	return nil
+}
+
+func GetActiveUserGuestAccessList(db sqlx.DB, userID int64) (*[]model.WhiteList, error) {
 	data := new([]model.WhiteList)
 	query := `SELECT id, plate_number, in_black_list, created_at,
        			expires_at, building_id, user_id, is_guest, is_tg_guest 
@@ -391,7 +476,7 @@ func GetActiveUserGuestAccessList(db sqlx.DB, userID int) (*[]model.WhiteList, e
 
 	for rows.Next() {
 		var row model.WhiteList
-		if err = rows.Scan(&row.ID, &row.PlateNumber, &row.InBlackList, &row.CreatedAt, &row.ExpiresAt, &row.BuildingID, &row.UserID, &row.IsGuest); err != nil {
+		if err = rows.Scan(&row.ID, &row.PlateNumber, &row.InBlackList, &row.CreatedAt, &row.ExpiresAt, &row.BuildingID, &row.UserID, &row.IsGuest, &row.IsTgGuest); err != nil {
 			return nil, err
 		}
 		*data = append(*data, row)
@@ -402,7 +487,7 @@ func GetActiveUserGuestAccessList(db sqlx.DB, userID int) (*[]model.WhiteList, e
 
 func AddUserGuestAccess(db sqlx.DB, wl *model.WhiteList) error {
 	if wl.ExpiresAt == "" {
-		wl.ExpiresAt = time.Now().AddDate(0, 0, 0).Add(time.Hour * 1).String()
+		wl.ExpiresAt = time.Now().AddDate(0, 0, 0).Add(time.Hour * 1).Format("2006-01-02 15:04:05.000000")
 	}
 	_, err := db.Exec(
 		"INSERT INTO white_list (plate_number, expires_at, building_id, user_id, is_guest, is_tg_guest) VALUES($1, $2, $3, $4, $5, $6)",
@@ -414,7 +499,7 @@ func AddUserGuestAccess(db sqlx.DB, wl *model.WhiteList) error {
 	return nil
 }
 
-func GetUserBuildings(db sqlx.DB, id int) ([]model.Building, error) {
+func GetUserBuildings(db sqlx.DB, id int64) ([]model.Building, error) {
 	var buildings []model.Building
 	query := `select distinct building_id, b.name
 from parking p
