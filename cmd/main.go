@@ -47,7 +47,9 @@ func main() {
 	if err != nil {
 		panic("bot init error: " + err.Error())
 	}
-
+	loc, err := time.LoadLocation("Asia/Almaty")
+	// handle err
+	time.Local = loc
 	botUser, err = bot.GetMe()
 	if err != nil {
 		panic("bot getme error: " + err.Error())
