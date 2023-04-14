@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pkg-info overwrite-permissions="true" relocatable="false" identifier="org.golang.go" postinstall-action="none" version="go1.20.3" format-version="2" generator-version="InstallCmds-811 (21G72)" auth="root">
+    <payload numberOfFiles="13326" installKBytes="240456"/>
+    <bundle-version/>
+    <upgrade-bundle/>
+    <update-bundle/>
+    <atomic-update-bundle/>
+    <strict-identifier/>
+    <relocate/>
+    <scripts>
+        <preinstall file="./preinstall"/>
+        <postinstall file="./postinstall"/>
+    </scripts>
+</pkg-info>
