@@ -125,7 +125,7 @@ func GetActiveUserGuestAccessList(db sqlx.DB, userID int64) (*[]model.WhiteList,
 
 func AddUserGuestAccess(db sqlx.DB, wl *model.WhiteList) error {
 	if wl.ExpiresAt == "" {
-		wl.ExpiresAt = time.Now().AddDate(0, 0, 0).Add(time.Hour * 1).Format("2006-01-02 15:04:05.000000")
+		wl.ExpiresAt = time.Now().AddDate(0, 0, 0).Add(time.Hour * 7).Format("2006-01-02 15:04:05.000000")
 	}
 	_, err := db.Exec(
 		"INSERT INTO white_list (plate_number, expires_at, building_id, user_id, is_guest, is_tg_guest) VALUES($1, $2, $3, $4, $5, $6)",
