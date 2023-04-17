@@ -297,6 +297,14 @@ func main() {
 								continue
 							}
 							if len(*userAccList) > 0 {
+								for _, i := range *userAccList {
+									if i.PlateNumber == update.Message.Text {
+										msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Данный номер уже находится гостевом списке")
+										msg.ReplyMarkup = courseMenu
+										cs.State = finbot.StateBuilding
+										bot.Send(msg)
+									}
+								}
 								msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Превышен лимит гостевых доступов")
 								msg.ReplyMarkup = courseMenu
 								cs.State = finbot.StateBuilding
@@ -316,7 +324,7 @@ func main() {
 								continue
 							}
 							cs.State = finbot.StateBuilding
-							msg4 := tgbotapi.NewMessage(int64(update.Message.Chat.ID), "Номер добавлен")
+							msg4 := tgbotapi.NewMessage(int64(update.Message.Chat.ID), fmt.Sprintf("Гостевой доступ для %v предоставлен на 1 час.", update.Message.Text))
 							msg4.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 							if _, errS := bot.Send(msg4); errS != nil {
 								fmt.Printf(errS.Error())
