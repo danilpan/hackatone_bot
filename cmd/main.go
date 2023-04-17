@@ -179,6 +179,8 @@ func main() {
 					if _, errS := bot.Send(msg4); errS != nil {
 						fmt.Printf(errS.Error())
 					}
+				} else if update.Message.Text == courseMenu.Keyboard[0][1].Text {
+
 				} else {
 					cs, ok := courseSignMap[update.Message.From.ID]
 					if ok {
