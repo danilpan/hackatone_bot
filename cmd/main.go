@@ -23,6 +23,7 @@ var mainMenu = tgbotapi.NewReplyKeyboard(
 var courseMenu = tgbotapi.NewReplyKeyboard(
 	tgbotapi.NewKeyboardButtonRow(
 		tgbotapi.NewKeyboardButton("Добавить гостя"),
+		tgbotapi.NewKeyboardButton("Мои гости"),
 	),
 )
 
