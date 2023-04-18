@@ -170,3 +170,36 @@ where is_guest = true AND is_tg_guest=true
 	}
 	return guests, nil
 }
+
+func ProlongUserGuestAccess(db sqlx.DB, id int) error {
+	_, err := db.Exec(
+		"UPDATE white_list SET expires_at = expires_at + interval '1 hour' where id=$1", id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func DeleteUserGuestAccess(db sqlx.DB, id int) error {
+	_, err := db.Exec(
+		"UPDATE white_list SET expires_at = expires_at - interval '1000 year' where id=$1", id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GetGuestById(db sqlx.DB, id int64) (model.WhiteList, error) {
+	resp := model.WhiteList{}
+	query := `SELECT id, plate_number FROM white_list WHERE id=$1`
+	err := db.Get(&resp, query, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return resp, fmt.Errorf("unf")
+		}
+		return resp, fmt.Errorf("dbe")
+	}
+	return resp, nil
+}

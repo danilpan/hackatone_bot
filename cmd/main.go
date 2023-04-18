@@ -27,6 +27,18 @@ var courseMenu = tgbotapi.NewReplyKeyboard(
 	),
 )
 
+var stateMenu = tgbotapi.NewReplyKeyboard(
+	tgbotapi.NewKeyboardButtonRow(
+		tgbotapi.NewKeyboardButton("Продлить доступ на час"),
+	),
+	tgbotapi.NewKeyboardButtonRow(
+		tgbotapi.NewKeyboardButton("Удалить доступ"),
+	),
+	tgbotapi.NewKeyboardButtonRow(
+		tgbotapi.NewKeyboardButton("В главное меню"),
+	),
+)
+
 var courseSignMap map[int]*finbot.CourseSign
 
 func init() {
@@ -120,11 +132,6 @@ func main() {
 						"message: %s\n",
 						update.Message.Text)
 
-					//msgConfig := tgbotapi.NewMessage(
-					//	update.Message.Chat.ID,
-					//	"Выберите доступный объект")
-					//msgConfig.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
-					//bot.Send(msgConfig)
 					userId, errCUD := CheckUserDb(*db, update.Message.Chat.ID)
 					if errCUD != nil {
 						msgConfig := tgbotapi.NewMessage(
@@ -192,7 +199,7 @@ func main() {
 						continue
 					}
 					guests, errGUG := GetUserGuests(*db, userId)
-					if errGUG != nil {
+					if errGUG != nil || guests == nil || len(guests) == 0 {
 						msgConfig := tgbotapi.NewMessage(
 							update.Message.Chat.ID,
 							"Нет активных гостевых доступов.")
@@ -202,10 +209,12 @@ func main() {
 						bot.Send(msg)
 						continue
 					}
-					var guestsButtons []tgbotapi.InlineKeyboardButton
+					var guestsButtons [][]tgbotapi.InlineKeyboardButton
 					for _, b := range guests {
 						callback := fmt.Sprintf("numbers_%v", b.ID)
-						guestsButtons = append(guestsButtons, tgbotapi.InlineKeyboardButton{
+						but := []tgbotapi.InlineKeyboardButton{}
+
+						button := tgbotapi.InlineKeyboardButton{
 							Text:                         b.PlateNumber,
 							URL:                          nil,
 							CallbackData:                 &callback,
@@ -213,15 +222,58 @@ func main() {
 							SwitchInlineQueryCurrentChat: nil,
 							CallbackGame:                 nil,
 							Pay:                          false,
-						})
+						}
+						but = append(but, button)
+						guestsButtons = append(guestsButtons, but)
 					}
 					courseSignMap[update.Message.From.ID] = new(finbot.CourseSign)
 					courseSignMap[update.Message.From.ID].State = finbot.StateTel
-					buildingMenu := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(guestsButtons...))
-					msg4 := tgbotapi.NewMessage(update.Message.Chat.ID, "Ваши гости.")
+
+					buildingMenu := tgbotapi.NewInlineKeyboardMarkup(guestsButtons...)
+					msg4 := tgbotapi.NewMessage(update.Message.Chat.ID, "Ваши гости.\nНажмите на номер для редактирования:")
 					msg4.ReplyMarkup = buildingMenu
 					if _, errS := bot.Send(msg4); errS != nil {
 						fmt.Printf(errS.Error())
+					}
+				} else if update.Message.Text == stateMenu.Keyboard[0][0].Text {
+					cs, ok := courseSignMap[update.Message.From.ID]
+					if ok {
+						errPUGA := ProlongUserGuestAccess(*db, cs.NumberId)
+						if errPUGA != nil {
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Ошибка продления гостевого доступа"))
+							msg.ReplyMarkup = stateMenu
+							cs.State = finbot.StateNumberChangeState
+							bot.Send(msg)
+							continue
+						}
+						msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Доступ продлен.\nВыберите действие"))
+						msg.ReplyMarkup = courseMenu
+						cs.State = finbot.StateRegistered
+						bot.Send(msg)
+					}
+				} else if update.Message.Text == stateMenu.Keyboard[1][0].Text {
+					cs, ok := courseSignMap[update.Message.From.ID]
+					if ok {
+						errPUGA := DeleteUserGuestAccess(*db, cs.NumberId)
+						if errPUGA != nil {
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Ошибка продления гостевого доступа"))
+							msg.ReplyMarkup = stateMenu
+							cs.State = finbot.StateNumberChangeState
+							bot.Send(msg)
+							continue
+						}
+						msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Гостевой доступ удален.\nВыберите действие"))
+						msg.ReplyMarkup = courseMenu
+						cs.State = finbot.StateRegistered
+						bot.Send(msg)
+					}
+				} else if update.Message.Text == stateMenu.Keyboard[2][0].Text {
+					cs, ok := courseSignMap[update.Message.From.ID]
+					if ok {
+						msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Выберите действие"))
+						msg.ReplyMarkup = courseMenu
+						cs.State = finbot.StateRegistered
+						bot.Send(msg)
 					}
 				} else {
 					cs, ok := courseSignMap[update.Message.From.ID]
@@ -377,6 +429,10 @@ func main() {
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите команду")
 							msg.ReplyMarkup = courseMenu
 							bot.Send(msg)
+						} else if cs.State == finbot.StateNumberChangeState {
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Что сделать с гостевым доступом %v", cs.NumberId))
+							msg.ReplyMarkup = stateMenu
+							bot.Send(msg)
 						}
 
 					}
@@ -412,7 +468,7 @@ func main() {
 						}
 					}
 				}
-				if arr[0] == "number" {
+				if arr[0] == "numbers" {
 					if arr[1] != "" {
 						cs, ok := courseSignMap[update.CallbackQuery.From.ID]
 						if ok {
@@ -421,11 +477,18 @@ func main() {
 								fmt.Printf("Error atoi")
 							}
 							cs.NumberId = intVar
-							msg := tgbotapi.NewMessage(int64(update.CallbackQuery.From.ID), fmt.Sprintf("Введите гос номер гостя: "))
-							msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+							rs, errGGBI := GetGuestById(*db, int64(intVar))
+							if errGGBI != nil {
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("%s", errGGBI.Error()))
+								msg.ReplyMarkup = courseMenu
+								cs.State = finbot.StateRegistered
+								bot.Send(msg)
+								continue
+							}
+							msg := tgbotapi.NewMessage(int64(update.CallbackQuery.From.ID), fmt.Sprintf("Что сделать с гостевым доступом %v", rs.PlateNumber))
+							msg.ReplyMarkup = stateMenu
 							cs.State = finbot.StateNumberChangeState
 							bot.Send(msg)
-
 							continue
 						}
 					}
