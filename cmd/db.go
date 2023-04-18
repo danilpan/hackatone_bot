@@ -153,3 +153,20 @@ where is_active = true
 	}
 	return buildings, nil
 }
+
+func GetUserGuests(db sqlx.DB, id int64) ([]model.WhiteList, error) {
+	var guests []model.WhiteList
+	query := `select p.id, plate_number, building_id, expires_at
+from white_list p
+         join (select id, name from buildings) b on p.building_id = b.id
+where is_guest = true AND is_tg_guest=true
+  and (user_id = $1 or phone = (select phone_number from users where id = $1));`
+	err := db.Select(&guests, query, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return guests, fmt.Errorf("unf")
+		}
+		return guests, fmt.Errorf("dbe")
+	}
+	return guests, nil
+}

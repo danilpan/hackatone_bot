@@ -180,7 +180,49 @@ func main() {
 						fmt.Printf(errS.Error())
 					}
 				} else if update.Message.Text == courseMenu.Keyboard[0][1].Text {
-
+					userId, errCUD := CheckUserDb(*db, update.Message.Chat.ID)
+					if errCUD != nil {
+						msgConfig := tgbotapi.NewMessage(
+							update.Message.Chat.ID,
+							"Пользователь не найден.")
+						bot.Send(msgConfig)
+						msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Пользователь не найден.")
+						msg.ReplyMarkup = courseMenu
+						bot.Send(msg)
+						continue
+					}
+					guests, errGUG := GetUserGuests(*db, userId)
+					if errGUG != nil {
+						msgConfig := tgbotapi.NewMessage(
+							update.Message.Chat.ID,
+							"Нет активных гостевых доступов.")
+						bot.Send(msgConfig)
+						msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+						msg.ReplyMarkup = courseMenu
+						bot.Send(msg)
+						continue
+					}
+					var guestsButtons []tgbotapi.InlineKeyboardButton
+					for _, b := range guests {
+						callback := fmt.Sprintf("numbers_%v", b.ID)
+						guestsButtons = append(guestsButtons, tgbotapi.InlineKeyboardButton{
+							Text:                         b.PlateNumber,
+							URL:                          nil,
+							CallbackData:                 &callback,
+							SwitchInlineQuery:            nil,
+							SwitchInlineQueryCurrentChat: nil,
+							CallbackGame:                 nil,
+							Pay:                          false,
+						})
+					}
+					courseSignMap[update.Message.From.ID] = new(finbot.CourseSign)
+					courseSignMap[update.Message.From.ID].State = finbot.StateTel
+					buildingMenu := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(guestsButtons...))
+					msg4 := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите объект.")
+					msg4.ReplyMarkup = buildingMenu
+					if _, errS := bot.Send(msg4); errS != nil {
+						fmt.Printf(errS.Error())
+					}
 				} else {
 					cs, ok := courseSignMap[update.Message.From.ID]
 					if ok {
