@@ -218,7 +218,7 @@ func main() {
 					courseSignMap[update.Message.From.ID] = new(finbot.CourseSign)
 					courseSignMap[update.Message.From.ID].State = finbot.StateTel
 					buildingMenu := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(guestsButtons...))
-					msg4 := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите объект.")
+					msg4 := tgbotapi.NewMessage(update.Message.Chat.ID, "Ваши гости.")
 					msg4.ReplyMarkup = buildingMenu
 					if _, errS := bot.Send(msg4); errS != nil {
 						fmt.Printf(errS.Error())
@@ -406,6 +406,24 @@ func main() {
 							msg := tgbotapi.NewMessage(int64(update.CallbackQuery.From.ID), fmt.Sprintf("Введите гос номер гостя: "))
 							msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 							cs.State = finbot.StateGuestAdd
+							bot.Send(msg)
+
+							continue
+						}
+					}
+				}
+				if arr[0] == "number" {
+					if arr[1] != "" {
+						cs, ok := courseSignMap[update.CallbackQuery.From.ID]
+						if ok {
+							intVar, errAtoi := strconv.Atoi(arr[1])
+							if errAtoi != nil {
+								fmt.Printf("Error atoi")
+							}
+							cs.NumberId = intVar
+							msg := tgbotapi.NewMessage(int64(update.CallbackQuery.From.ID), fmt.Sprintf("Введите гос номер гостя: "))
+							msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+							cs.State = finbot.StateNumberChangeState
 							bot.Send(msg)
 
 							continue
