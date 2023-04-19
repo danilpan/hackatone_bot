@@ -387,7 +387,7 @@ func main() {
 							}
 							userAccList, errGAUGAL := GetActiveUserGuestAccessList(*db, id)
 							if errGAUGAL != nil {
-								msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Ошибка получения гостевого списка: %s", errGAUGAL.Error()))
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Ошибка получения гостевого списка", errGAUGAL.Error()))
 								msg.ReplyMarkup = courseMenu
 								cs.State = finbot.StateBuilding
 								bot.Send(msg)
@@ -414,7 +414,7 @@ func main() {
 								UserID:      int(id),
 							})
 							if errAUGA != nil {
-								msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Ошибка добавления в гостевой список: %s", errAUGA.Error()))
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Ошибка добавления в гостевой список", errAUGA.Error()))
 								msg.ReplyMarkup = courseMenu
 								cs.State = finbot.StateBuilding
 								bot.Send(msg)
@@ -479,7 +479,7 @@ func main() {
 							cs.NumberId = intVar
 							rs, errGGBI := GetGuestById(*db, int64(intVar))
 							if errGGBI != nil {
-								msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("%s", errGGBI.Error()))
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("", errGGBI.Error()))
 								msg.ReplyMarkup = courseMenu
 								cs.State = finbot.StateRegistered
 								bot.Send(msg)
