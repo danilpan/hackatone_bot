@@ -8,6 +8,9 @@ const (
 	StateBuilding
 	StateGuestAdd
 	StateNumberChangeState
+	StateRegistration
+	StateRegistrationName
+	StateRegistrationLastname
 )
 
 type CourseSign struct {
@@ -15,4 +18,7 @@ type CourseSign struct {
 	Telephone string
 	Building  int
 	NumberId  int
+	FirstName string
+	LastName  string
+	UserId    int
 }

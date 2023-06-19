@@ -203,3 +203,15 @@ func GetGuestById(db sqlx.DB, id int64) (model.WhiteList, error) {
 	}
 	return resp, nil
 }
+
+func RegisterUser(db sqlx.DB, user model.UserRegistration) (int, error) {
+	var id int
+	//TODO onconflict добавить каунтер к логину
+	err := db.QueryRowx(
+		"INSERT INTO users (username, password, first_name, last_name, phone_number, enabled, tg_id) VALUES ($1, $2, $3, $4, $5, true, $6) RETURNING id;",
+		user.Username, user.Password, user.Name, user.LastName, user.Phone, user.TgId).Scan(&id)
+	if err != nil {
+		return id, err
+	}
+	return id, nil
+}

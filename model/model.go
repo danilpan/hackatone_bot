@@ -18,3 +18,13 @@ type Building struct {
 	Id   int    `json:"id" db:"building_id"`
 	Name string `json:"name" db:"name"`
 }
+
+type UserRegistration struct {
+	Id       int
+	Name     string
+	LastName string
+	Phone    string
+	Username string
+	Password string
+	TgId     int64
+}

@@ -6,6 +6,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/mehanizm/iuliia-go"
+	"github.com/sethvargo/go-password/password"
+	"golang.org/x/crypto/bcrypt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +21,12 @@ var mainMenu = tgbotapi.NewReplyKeyboard(
 	tgbotapi.NewKeyboardButtonRow(
 		tgbotapi.NewKeyboardButton("🏠 Главная"),
 		tgbotapi.NewKeyboardButton("🗒 Привязать номер телефона"),
+	),
+)
+
+var signUpMenu = tgbotapi.NewReplyKeyboard(
+	tgbotapi.NewKeyboardButtonRow(
+		tgbotapi.NewKeyboardButton("🗒 Регистрация"),
 	),
 )
 
@@ -275,6 +285,16 @@ func main() {
 						cs.State = finbot.StateRegistered
 						bot.Send(msg)
 					}
+				} else if update.Message.Text == signUpMenu.Keyboard[0][0].Text {
+					cs, ok := courseSignMap[update.Message.From.ID]
+					if ok {
+						msgConfig := tgbotapi.NewMessage(
+							update.Message.Chat.ID,
+							"Введите свое имя")
+						cs.State = finbot.StateRegistration
+						msgConfig.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+						bot.Send(msgConfig)
+					}
 				} else {
 					cs, ok := courseSignMap[update.Message.From.ID]
 					if ok {
@@ -297,8 +317,9 @@ func main() {
 									update.Message.Chat.ID,
 									"Номер телефона не найден. \nВы не являетесь пользователем сервиса.")
 								bot.Send(msgConfig)
-								msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Для использования бота зарегистрируйтесь. \nПривяжите номер телефона")
-								msg.ReplyMarkup = mainMenu
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Для использования бота зарегистрируйтесь.")
+								cs.Telephone = update.Message.Text
+								msg.ReplyMarkup = signUpMenu
 								bot.Send(msg)
 								continue
 							}
@@ -433,6 +454,59 @@ func main() {
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Что сделать с гостевым доступом %v", cs.NumberId))
 							msg.ReplyMarkup = stateMenu
 							bot.Send(msg)
+						} else if cs.State == finbot.StateRegistration {
+							if len(update.Message.Text) > 0 {
+								cs.FirstName = update.Message.Text
+								cs.State = finbot.StateRegistrationName
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Ваше имя - %v", update.Message.Text))
+								msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+								bot.Send(msg)
+								msgCfg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("%v, введите Вашу фамилию", update.Message.Text))
+								msgCfg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+								bot.Send(msgCfg)
+							}
+						} else if cs.State == finbot.StateRegistrationName {
+							if len(update.Message.Text) > 0 {
+								cs.LastName = update.Message.Text
+								cs.State = finbot.StateRegistrationLastname
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Ваше фамилия - %v", update.Message.Text))
+								msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+								bot.Send(msg)
+								if len(cs.FirstName) > 0 && len(cs.LastName) > 0 && len(cs.Telephone) > 0 {
+									res, errG := password.Generate(8, 2, 2, false, false)
+									if errG != nil {
+										//TODO add handling
+										log.Fatal(errG)
+									}
+									username := iuliia.Wikipedia.Translate(fmt.Sprintf("%v%v", cs.FirstName, cs.LastName))
+									bytes, errGFP := bcrypt.GenerateFromPassword([]byte(res), 10)
+									if errGFP != nil {
+										//TODO add handling
+									}
+									pass := string(bytes)
+									_, err := RegisterUser(*db, model.UserRegistration{
+										Name:     cs.FirstName,
+										LastName: cs.LastName,
+										Phone:    cs.Telephone,
+										Username: username,
+										Password: pass,
+										TgId:     update.Message.Chat.ID,
+									})
+									if err != nil {
+										//TODO add handling
+										log.Fatal(err)
+									}
+									msgCfg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Пользователь успешно зарегистрирован!\nLogin - %v \nПароль - %v", username, res))
+									msgCfg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+									bot.Send(msgCfg)
+									cs.State = finbot.StateRegistered
+									msg2 := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите функцию")
+									msg2.ReplyMarkup = courseMenu
+									bot.Send(msg2)
+								}
+							}
+						} else if cs.State == finbot.StateRegistrationLastname {
+
 						}
 
 					}
