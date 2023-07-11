@@ -10,6 +10,7 @@ import (
 	"github.com/sethvargo/go-password/password"
 	"golang.org/x/crypto/bcrypt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -414,6 +415,14 @@ func main() {
 								bot.Send(msg)
 								continue
 							}
+							errPV := PlateValidator(update.Message.Text)
+							if errPV != nil {
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Неверный формат номера"))
+								msg.ReplyMarkup = courseMenu
+								cs.State = finbot.StateBuilding
+								bot.Send(msg)
+								continue
+							}
 							if len(*userAccList) > 0 {
 								for _, i := range *userAccList {
 									if i.PlateNumber == update.Message.Text {
@@ -595,5 +604,24 @@ func CheckNum(phone string) error {
 				return nil
 			}
 		}
+	}
+}
+
+func PlateValidator(plateNumber string) error {
+	if len(plateNumber) > 8 {
+		r, _ := regexp.Compile("[a-zA-Zа-яА-Я]{1}[0-9]{3}[a-zA-Zа-яА-Я]{2}[0-9]{2,3}")
+		if !r.MatchString(plateNumber) {
+			return fmt.Errorf("bad number")
+		}
+		return nil
+	} else {
+		r, _ := regexp.Compile("[a-zA-Zа-яА-Я][0-9]{3}[a-zA-Zа-яА-Я]{2,3}")
+		r2, _ := regexp.Compile("[0-9]{2,3}[a-zA-Zа-яА-Я]{2,3}[0-9]{2,3}")
+		r3, _ := regexp.Compile("[a-zA-Zа-яА-Я]{1,3}[0-9]{3,6}")
+		r4, _ := regexp.Compile("[0-9]{4,5}[a-zA-Zа-яА-Я]{3}")
+		if !r.MatchString(plateNumber) && !r2.MatchString(plateNumber) && !r3.MatchString(plateNumber) && !r4.MatchString(plateNumber) {
+			return fmt.Errorf("bad number")
+		}
+		return nil
 	}
 }
