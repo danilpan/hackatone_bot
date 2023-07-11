@@ -533,7 +533,9 @@ func main() {
 								fmt.Printf("Error atoi")
 							}
 							cs.Building = intVar
-							msg := tgbotapi.NewMessage(int64(update.CallbackQuery.From.ID), fmt.Sprintf("Введите гос номер гостя: "))
+							msg := tgbotapi.NewMessage(
+								int64(update.CallbackQuery.From.ID),
+								fmt.Sprintf("Введите гос номер гостя в формате 001AAA01 или A001AAA: "))
 							msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 							cs.State = finbot.StateGuestAdd
 							bot.Send(msg)
