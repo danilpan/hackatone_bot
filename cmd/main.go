@@ -415,7 +415,8 @@ func main() {
 								bot.Send(msg)
 								continue
 							}
-							errPV := PlateValidator(update.Message.Text)
+							plateNumber, _ := CyrillicRemover(update.Message.Text)
+							errPV := PlateValidator(plateNumber)
 							if errPV != nil {
 								msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Неверный формат номера"))
 								msg.ReplyMarkup = courseMenu
@@ -425,7 +426,7 @@ func main() {
 							}
 							if len(*userAccList) > 0 {
 								for _, i := range *userAccList {
-									if i.PlateNumber == update.Message.Text {
+									if i.PlateNumber == plateNumber {
 										msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Данный номер уже находится гостевом списке")
 										msg.ReplyMarkup = courseMenu
 										cs.State = finbot.StateBuilding
@@ -439,7 +440,7 @@ func main() {
 								continue
 							}
 							errAUGA := AddUserGuestAccess(*db, &model.WhiteList{
-								PlateNumber: update.Message.Text,
+								PlateNumber: plateNumber,
 								BuildingID:  cs.Building,
 								UserID:      int(id),
 							})
@@ -624,4 +625,35 @@ func PlateValidator(plateNumber string) error {
 		}
 		return nil
 	}
+}
+
+func CyrillicRemover(plateNumber string) (string, error) {
+	var n string
+	letters := map[string]string{
+		"У": "Y",
+		"Е": "E",
+		"К": "K",
+		"Н": "H",
+		"Х": "X",
+		"В": "B",
+		"А": "A",
+		"Р": "P",
+		"О": "O",
+		"С": "C",
+		"М": "M",
+		"Т": "T",
+	}
+	plateNumber = strings.ReplaceAll(plateNumber, " ", "")
+	plateNumber = strings.ToUpper(plateNumber)
+	plateArray := strings.Split(plateNumber, "")
+
+	for i, a := range plateArray {
+		for key, element := range letters {
+			if a == key {
+				plateArray[i] = element
+			}
+		}
+	}
+	n = strings.Join(plateArray, "")
+	return n, nil
 }
